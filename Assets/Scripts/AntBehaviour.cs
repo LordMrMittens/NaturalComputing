@@ -14,11 +14,12 @@ public class AntBehaviour : MonoBehaviour
     [SerializeField] Transform jaws;
     [SerializeField] Transform butt;
     Transform targetFood;
+    Transform targetPhero;
     [SerializeField] float fieldOfVision;
     [SerializeField] float visionDistance;
     [SerializeField] LayerMask foodLayer;
     [SerializeField] float pickupDistance;
-    bool hasFood = false;
+    public bool hasFood = false;
     bool foodDetected = false;
     [SerializeField] Transform home;
 
@@ -27,29 +28,29 @@ public class AntBehaviour : MonoBehaviour
     [SerializeField] float pheromoneFrequency;
     [SerializeField] LayerMask pheromoneLayer;
     float pheromoneTimer;
-
+    public List<Transform> homePheros = new List<Transform>();
     void Update()
     {
-        //movement needs to be redone!!
-        FindPheromone();
-        pheromoneTimer+= Time.deltaTime;
-        if (!hasFood)
+
+        pheromoneTimer += Time.deltaTime;
+        
+
+        if (hasFood)
         {
-            FindFood();
-        }
-        if (!hasFood && !foodDetected)
-        {
-            direction = (direction + Random.insideUnitCircle * randomnessForce).normalized;
-        }
-        else if (hasFood)
-        {
-            direction = (home.position - jaws.position).normalized;
+            FindPheromone();
             if (Vector2.Distance(home.position, jaws.position) < pickupDistance)
             {
                 Destroy(pickedFood);
                 hasFood = false;
+                homePheros.Clear();
             }
         }
+        else
+        {
+            direction = (direction + Random.insideUnitCircle * randomnessForce).normalized;
+            FindFood();
+        }
+
         Vector2 desiredVelocity = direction * maxSpeed;
         Vector2 desiredTurningForce = (desiredVelocity - velocity) * turningForce;
         Vector2 acceleration = Vector2.ClampMagnitude(desiredTurningForce, turningForce) / 1;
@@ -61,29 +62,73 @@ public class AntBehaviour : MonoBehaviour
         transform.SetPositionAndRotation(currentPos, Quaternion.Euler(0, 0, angle));
         if (velocity.magnitude > 0 && pheromoneTimer >= pheromoneFrequency)
         {
-            
-            GameObject trail = LeavePheromone();
-            pheromoneTimer=0;
-            if (hasFood)
-            {
-                trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.backPhero, Color.red);
-            }
-            else
-            {
-                trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.blue);
-            }
+            LeavePheromone();
+            pheromoneTimer = 0;
         }
     }
     void FindPheromone()
     {
-        Collider2D[] detectedPheromone = Physics2D.OverlapCircleAll(currentPos, visionDistance, pheromoneLayer);
-        if (detectedPheromone.Length > 0)
+        if (hasFood)
         {
-            int randomPheromone = Random.Range(0,detectedPheromone.Length-1);
-            //find home or away pheromone needed need to implement
-            if (Vector2.Angle(transform.right, detectedPheromone[randomPheromone].transform.position) < fieldOfVision / 2)
+            if (homePheros.Count > 0)
             {
-                direction = (direction + (Vector2)detectedPheromone[randomPheromone].transform.position * pheromoneAttraction).normalized;
+                Vector2 nextPheromone = homePheros[homePheros.Count - 1].transform.position;
+                direction = (nextPheromone - (Vector2)jaws.position).normalized;
+                if (Vector2.Distance(nextPheromone, jaws.position) < pickupDistance)
+                {
+                    homePheros.RemoveAt(homePheros.Count - 1);
+                }
+            }
+            else
+            {
+                direction = ((Vector2)home.transform.position - (Vector2)jaws.position).normalized;
+            }
+        }
+        else
+        {
+            if (targetPhero == null)
+            {
+                Transform targetPhero;
+                Collider2D[] detectedPheros = Physics2D.OverlapCircleAll(currentPos, visionDistance, pheromoneLayer);
+                for (int i = 0; i < detectedPheros.Length; i++)
+                {
+                    if (detectedPheros[i].name != "To Food")
+                    {
+                        detectedPheros[i] = null;
+                    }
+                }
+                if (detectedPheros.Length > 0)
+                {
+                    float bestDistance = Vector2.Distance(detectedPheros[0].transform.position, jaws.position);
+                    int bestIndex = 0;
+                    for (int i = 0; i < detectedPheros.Length - 1; i++)
+                    {
+                        if (detectedPheros[i].name == "To Food")
+                        {
+                            float pheroIterationDistance = Vector2.Distance(detectedPheros[i].transform.position, jaws.position);
+                            if (bestDistance > pheroIterationDistance)
+                            {
+                                bestIndex = i;
+                                bestDistance = pheroIterationDistance;
+                            }
+                        }
+                    }
+                    Transform closestphero = detectedPheros[bestIndex].transform;
+                    Vector2 PheroDirection = (closestphero.position - jaws.position).normalized;
+
+                    if (Vector2.Angle(transform.right, PheroDirection) < fieldOfVision / 2)
+                    {
+                        targetPhero = closestphero;
+                    }
+                }
+            }
+            else
+            {
+                direction = ((Vector2)targetPhero.position - (Vector2)jaws.position).normalized;
+                if (Vector2.Distance(targetPhero.position, jaws.position) < pickupDistance)
+                {
+                    targetPhero = null;
+                }
             }
         }
     }
@@ -111,6 +156,7 @@ public class AntBehaviour : MonoBehaviour
 
                 if (Vector2.Angle(transform.right, foodDirection) < fieldOfVision / 2)
                 {
+                    
                     targetFood = closestFood;
                     foodDetected = true;
                 }
@@ -128,14 +174,25 @@ public class AntBehaviour : MonoBehaviour
                 targetFood = null;
                 hasFood = true;
                 foodDetected = false;
+                FindPheromone();
             }
         }
     }
-    GameObject LeavePheromone()
+    void LeavePheromone()
     {
         GameObject trail = Instantiate(pheromone, butt.position, Quaternion.identity);
-        return trail;
-
+        if (hasFood)
+        {
+            trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.backPhero, Color.red);
+            trail.name = "To Food";
+            
+        }
+        else
+        {
+            trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.blue);
+            trail.name = "To Home";
+            homePheros.Add(trail.transform);
+        }
     }
 }
 
