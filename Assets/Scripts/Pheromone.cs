@@ -5,7 +5,7 @@ public enum PheromoneType{outPhero, backPhero};
 public class Pheromone : MonoBehaviour
 {
     
-    PheromoneType pType;
+    public PheromoneType pType;
     [SerializeField] float decayRate;
     float strength = 100;
     [SerializeField] SpriteRenderer spriteRenderer;

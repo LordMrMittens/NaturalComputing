@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AntBehaviour : MonoBehaviour
+public class PheromoneTest : MonoBehaviour
 {
+
     [SerializeField] float maxSpeed = 2;
     [SerializeField] float turningForce = 2;
     [SerializeField] float randomnessForce = 1;
@@ -19,7 +20,6 @@ public class AntBehaviour : MonoBehaviour
     [SerializeField] float visionDistance;
     [SerializeField] LayerMask foodLayer;
     [SerializeField] float pickupDistance;
-    [SerializeField] float dropDistance;
     [SerializeField] float homeDistance;
     public bool hasFood = false;
     bool foodDetected = false;
@@ -35,35 +35,31 @@ public class AntBehaviour : MonoBehaviour
     [SerializeField] float feelerRadius = .1f;
     Transform lastPheromone;
     Transform lastRelevantPheromone;
-    int obstacleAvoidDirection=0;
-    
     void Update()
     {
 
         pheromoneTimer += Time.deltaTime;
-        if (!hasFood)
-        {
-            FindFood();
-            direction = (direction + Random.insideUnitCircle * randomnessForce).normalized;
-        }
-        else
+        
+        if (hasFood)
         {
             if (Vector2.Distance(home.position, jaws.position) < homeDistance)
             {
                 direction = (home.position - jaws.position).normalized;
             }
-            if (Vector2.Distance(home.position, jaws.position) < dropDistance)
+            if (Vector2.Distance(home.position, jaws.position) < pickupDistance)
             {
                 Destroy(pickedFood);
                 hasFood = false;
                 direction *= -direction;
             }
         }
-
-        if (!foodDetected && Vector2.Distance(home.position, jaws.position) > homeDistance)
+        else
         {
-            FindPheromone();
+           // FindFood();
+            direction = Vector2.right;
         }
+        FindPheromone();
+
         Vector2 desiredVelocity = direction * maxSpeed;
         Vector2 desiredTurningForce = (desiredVelocity - velocity) * turningForce;
         Vector2 acceleration = Vector2.ClampMagnitude(desiredTurningForce, turningForce) / 1;
@@ -75,7 +71,7 @@ public class AntBehaviour : MonoBehaviour
         transform.SetPositionAndRotation(currentPos, Quaternion.Euler(0, 0, angle));
         if (velocity.magnitude > 0 && pheromoneTimer >= pheromoneFrequency)
         {
-            LeavePheromone();
+           // LeavePheromone();
             pheromoneTimer = 0;
         }
     }
@@ -87,28 +83,22 @@ public class AntBehaviour : MonoBehaviour
         int centerFoodPheros = 0;
         int rightHomePheros = 0;
         int rightFoodPheros = 0;
-        int leftObstacle = 0;
-        int rightObstacle = 0;
-        int centerObstacle = 0;
-
         Collider2D[] leftCollisions = Physics2D.OverlapCircleAll(leftFeeler.position, feelerRadius, pheromoneLayer);
         Collider2D[] centerCollisions = Physics2D.OverlapCircleAll(centerFeeler.position, feelerRadius, pheromoneLayer);
         Collider2D[] rightCollisions = Physics2D.OverlapCircleAll(rightFeeler.position, feelerRadius, pheromoneLayer);
-
+        
         foreach (var pheromone in leftCollisions)
         {
+            
             if (pheromone.name == "To Home")
             {
                 leftHomePheros++;
-            }
-            else if (pheromone.name == "To Food")
-            {
-                leftFoodPheros++;
+                Debug.Log("detecting left home");
             }
             else
             {
-                Debug.Log("Obstacle left");
-                leftObstacle++;
+                leftFoodPheros++;
+                Debug.Log("detecting left food");
             }
         }
         foreach (var pheromone in centerCollisions)
@@ -116,15 +106,12 @@ public class AntBehaviour : MonoBehaviour
             if (pheromone.name == "To Home")
             {
                 centerHomePheros++;
-            }
-            else if (pheromone.name == "To Food")
-            {
-                centerFoodPheros++;
+                Debug.Log("detecting center home");
             }
             else
             {
-                Debug.Log("Obstacle center");
-                centerObstacle++;
+                centerFoodPheros++;
+                Debug.Log("detecting center food");
             }
         }
         foreach (var pheromone in rightCollisions)
@@ -132,15 +119,12 @@ public class AntBehaviour : MonoBehaviour
             if (pheromone.name == "To Home")
             {
                 rightHomePheros++;
-            }
-            else if (pheromone.name == "To Food")
-            {
-                rightFoodPheros++;
+                Debug.Log("detecting right home");
             }
             else
             {
-                Debug.Log("Obstacle right");
-                rightObstacle++;
+                rightFoodPheros++;
+                Debug.Log("detecting right food");
             }
         }
         if (!hasFood)
@@ -148,12 +132,12 @@ public class AntBehaviour : MonoBehaviour
             if (rightFoodPheros > leftFoodPheros)
             {
                 direction = (rightFeeler.transform.position - jaws.position).normalized;
-
+                Debug.Log("Trying to turn right");
             }
             else if (rightFoodPheros < leftFoodPheros)
             {
                 direction = (leftFeeler.transform.position - jaws.position).normalized;
-
+                Debug.Log("Trying to turn left");
             }
             if (centerFoodPheros >= leftFoodPheros || centerFoodPheros >= rightFoodPheros)
             {
@@ -177,31 +161,8 @@ public class AntBehaviour : MonoBehaviour
                 direction = (centerFeeler.transform.position - jaws.position).normalized;
 
             }
-            if (centerHomePheros == 0 && leftHomePheros == 0 && rightHomePheros == 0)
-            {
+            if (centerHomePheros == 0 && leftHomePheros == 0 && rightHomePheros == 0){
                 direction = (home.position - jaws.position).normalized;
-            }
-        }
-        if (leftObstacle > 0)
-        {
-            direction = (rightFeeler.transform.position - jaws.position).normalized;
-        }
-        if (rightObstacle > 0)
-        {
-            direction = (leftFeeler.transform.position - jaws.position).normalized;
-        }
-        if (centerObstacle > 0)
-        {
-            if(obstacleAvoidDirection==0){
-            obstacleAvoidDirection = Random.Range(1, 3);
-            }
-            if ( obstacleAvoidDirection > 1)
-            {
-                direction = (leftFeeler.transform.position - jaws.position).normalized;
-            }
-            else
-            {
-                direction = (rightFeeler.transform.position - jaws.position).normalized;
             }
         }
 
@@ -267,6 +228,6 @@ public class AntBehaviour : MonoBehaviour
             trail.name = "To Home";
             lastPheromone = trail.transform;
         }
-
+        
     }
 }

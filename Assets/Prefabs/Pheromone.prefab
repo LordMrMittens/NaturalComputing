@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 243193880436710761}
   - component: {fileID: 1330841936670724534}
   - component: {fileID: 5452877785928261309}
-  m_Layer: 6
+  m_Layer: 8
   m_Name: Pheromone
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -98,7 +98,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db817cc180ed56f4999c1edc8a33efa1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  decayRate: 5
+  pType: 0
+  decayRate: 2
   spriteRenderer: {fileID: 243193880436710761}
   trailValue: 0
 --- !u!58 &5452877785928261309
