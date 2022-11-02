@@ -29,7 +29,6 @@ public class Ant : MonoBehaviour
     GameObject pickedFood;
     [SerializeField] float pheromoneDistanceFrequency;
     [SerializeField] LayerMask pheromoneLayer;
-    float pheromoneTimer;
     [SerializeField] Transform leftFeeler;
     [SerializeField] Transform centerFeeler;
     [SerializeField] Transform rightFeeler;
@@ -39,16 +38,21 @@ public class Ant : MonoBehaviour
     int leftDesirability;
     int rightDesirability;
     int centerDesirability;
-    int maxDesirability;
     List<GameObject> ownPheromones = new List<GameObject>();
     Transform player;
+    float pheromoneListCounter;
+    float pheromoneListClearInterval;
     void Start()
     {
         LeavePheromone();
     }
     void Update()
     {
-
+        pheromoneListCounter += Time.deltaTime;
+        if (pheromoneListCounter > pheromoneListClearInterval)
+        {
+            ClearPheromoneList();
+        }
         if (!hasFood)
         {
             FindFood();
@@ -65,12 +69,15 @@ public class Ant : MonoBehaviour
                 Destroy(pickedFood);
                 hasFood = false;
                 direction *= -direction;
+                ClearPheromoneList();
             }
         }
         if (!foodDetected && Vector2.Distance(home.position, jaws.position) > homeDistance)
         {
-            FindPheromone();
+            
         }
+        FindPheromone();
+        AttackPlayer();
         Vector2 desiredVelocity = direction * maxSpeed;
         Vector2 desiredTurningForce = (desiredVelocity - velocity) * turningForce;
         Vector2 acceleration = Vector2.ClampMagnitude(desiredTurningForce, turningForce) / 1;
@@ -283,19 +290,23 @@ public class Ant : MonoBehaviour
             Collider2D[] detectedFood = Physics2D.OverlapCircleAll(currentPos, visionDistance, foodLayer);
             if (detectedFood.Length > 0)
             {
+
                 float bestDistance = Vector2.Distance(detectedFood[0].transform.position, jaws.position);
                 int bestIndex = 0;
-                for (int i = 0; i < detectedFood.Length - 1; i++)
+                for (int i = 0; i < detectedFood.Length; i++)
                 {
+                    if (detectedFood[i].gameObject.tag == "Player")
+                    {
+                        Debug.Log("PlayerDetected");
+                        player = detectedFood[i].transform;
+                        ConvertPheromones();
+                        ClearPheromoneList();
+                    }
                     float foodIterationDistance = Vector2.Distance(detectedFood[i].transform.position, jaws.position);
                     if (bestDistance > foodIterationDistance)
                     {
                         bestIndex = i;
                         bestDistance = foodIterationDistance;
-                    }
-                    if (detectedFood[i].gameObject.tag == "Player")
-                    {
-                        player = detectedFood[i].transform;
                     }
                 }
                 Transform closestFood = detectedFood[bestIndex].transform;
@@ -322,6 +333,7 @@ public class Ant : MonoBehaviour
                 targetFood = null;
                 hasFood = true;
                 foodDetected = false;
+                ClearPheromoneList();
             }
         }
     }
@@ -335,6 +347,12 @@ public class Ant : MonoBehaviour
             lastPheromone = trail.transform;
             ownPheromones.Add(trail);
 
+        }
+        else if (player)
+        {
+            trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.black);
+            trail.name = "To Player";
+            lastPheromone = trail.transform;
         }
         else
         {
@@ -351,5 +369,9 @@ public class Ant : MonoBehaviour
         {
             pheromone.name = "To Player";
         }
+    }
+    void ClearPheromoneList()
+    {
+        ownPheromones.Clear();
     }
 }
