@@ -22,7 +22,7 @@ public class AntHill : MonoBehaviour
 
     private void CreateAnt()
     {
-        GameObject ant = Instantiate(antPrefab);
+        GameObject ant = Instantiate(antPrefab, transform.position, Quaternion.identity);
         Ant antSettings = ant.GetComponent<Ant>();
         antSettings.SetUpAnt(transform.position);
         antSettings.homeAnthill = this;

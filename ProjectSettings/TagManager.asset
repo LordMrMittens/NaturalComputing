@@ -7,6 +7,7 @@ TagManager:
   - Ant
   - Obstacle
   - Food
+  - Exit
   layers:
   - Default
   - TransparentFX

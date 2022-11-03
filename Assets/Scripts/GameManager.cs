@@ -17,7 +17,11 @@ public class GameManager : MonoBehaviour
     [SerializeField] TMP_Text foodText;
     [SerializeField] TMP_Text antsText;
     [SerializeField] TMP_Text livesText;
+        [SerializeField] TMP_Text foodTotalText;
+    [SerializeField] TMP_Text antsTotalText;
     [SerializeField] GameObject GameOverScreen;
+    [SerializeField] GameObject winScreen;
+    [SerializeField] GameObject PauseScreen;
     bool isPaused = false;
     // Start is called before the first frame update
 
@@ -82,6 +86,9 @@ public class GameManager : MonoBehaviour
         antsText.text = $"Ants Killed: {antsEliminated}";
         livesText.text = $"Lives: {playerLives}";
         GameOverScreen.SetActive(false);
+        winScreen.SetActive(false);
+        PauseScreen.SetActive(false);
+        isPaused=false;
         Time.timeScale = 1;
         SpawnPlayer();
     }
@@ -89,8 +96,18 @@ public class GameManager : MonoBehaviour
     void Pause(){
         if(isPaused){
             Time.timeScale = 1;
+            PauseScreen.SetActive(false);
+            isPaused = false;
         } else {
             Time.timeScale = 0;
+            PauseScreen.SetActive(true);
+            isPaused= true;
         }
+    }
+    public void WinGame(){
+        Time.timeScale = 0;
+        foodTotalText.text = $"Total Food: {foodCollected}";
+        antsTotalText.text = $"Total Ants: {antsEliminated}";
+        winScreen.SetActive(true);
     }
 }

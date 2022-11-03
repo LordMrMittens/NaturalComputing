@@ -66,6 +66,8 @@ public class PlayerController : MonoBehaviour
             Destroy(other.gameObject);
             foodHeld++;
             GameManager.GM.UpdateFoodScore();
+        } else if( other.gameObject.tag == "Exit"){
+            GameManager.GM.WinGame();
         }
     }
     void Shoot()
