@@ -8,21 +8,20 @@ public class Ant : MonoBehaviour
     [SerializeField] float maxSpeed = 2;
     [SerializeField] float turningForce = 2;
     [SerializeField] float randomnessForce = 1;
-    [SerializeField] float pheromoneAttraction = 1;
+    [SerializeField] int ignorePheromoneFactor=3;
     Vector2 currentPos;
     Vector2 velocity;
     Vector2 direction;
     [SerializeField] Transform jaws;
     [SerializeField] Transform butt;
-    Transform targetFood;
-    Transform targetPhero;
+     Transform targetFood;
     [SerializeField] float fieldOfVision;
     [SerializeField] float visionDistance;
     [SerializeField] LayerMask foodLayer;
     [SerializeField] float pickupDistance;
     [SerializeField] float dropDistance;
     [SerializeField] float homeDistance;
-    public bool hasFood = false;
+    bool hasFood = false;
     bool foodDetected = false;
     [SerializeField] Transform home;
     [SerializeField] GameObject pheromone;
@@ -42,6 +41,7 @@ public class Ant : MonoBehaviour
     Transform player;
     float pheromoneListCounter;
     float pheromoneListClearInterval;
+    [SerializeField] float playerLoseDistance = 10;
     void Start()
     {
         LeavePheromone();
@@ -53,10 +53,24 @@ public class Ant : MonoBehaviour
         {
             ClearPheromoneList();
         }
+        Navigation();
+        if (Vector3.Distance(lastPheromone.position, transform.position) > pheromoneDistanceFrequency)
+        {
+            LeavePheromone();
+        }
+    }
+
+    private void Navigation()
+    {
+        UseFeelers();
         if (!hasFood)
         {
-            FindFood();
+            FindTarget();
             direction = (direction + Random.insideUnitCircle * randomnessForce).normalized;
+            if (player != null)
+            {
+                AttackPlayer();
+            }
         }
         else
         {
@@ -72,12 +86,7 @@ public class Ant : MonoBehaviour
                 ClearPheromoneList();
             }
         }
-        if (!foodDetected && Vector2.Distance(home.position, jaws.position) > homeDistance)
-        {
-            
-        }
-        FindPheromone();
-        AttackPlayer();
+
         Vector2 desiredVelocity = direction * maxSpeed;
         Vector2 desiredTurningForce = (desiredVelocity - velocity) * turningForce;
         Vector2 acceleration = Vector2.ClampMagnitude(desiredTurningForce, turningForce) / 1;
@@ -87,12 +96,9 @@ public class Ant : MonoBehaviour
 
         float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
         transform.SetPositionAndRotation(currentPos, Quaternion.Euler(0, 0, angle));
-        if (Vector3.Distance(lastPheromone.position, transform.position) > pheromoneDistanceFrequency)
-        {
-            LeavePheromone();
-        }
     }
-    void FindPheromone()
+
+    void UseFeelers()
     {
         int leftHomePheros = 0;
         int leftFoodPheros = 0;
@@ -106,6 +112,7 @@ public class Ant : MonoBehaviour
         int leftObstacle = 0;
         int rightObstacle = 0;
         int centerObstacle = 0;
+        int currentIgnorePheroFactor = ignorePheromoneFactor;
         float leftHomeDistance = Vector3.Distance(leftFeeler.position, home.position);
         float rightHomeDistance = Vector3.Distance(rightFeeler.position, home.position);
         List<int> desirabilitySelector = new List<int>();
@@ -113,8 +120,91 @@ public class Ant : MonoBehaviour
         Collider2D[] leftCollisions = Physics2D.OverlapCircleAll(leftFeeler.position, feelerRadius, pheromoneLayer);
         Collider2D[] centerCollisions = Physics2D.OverlapCircleAll(centerFeeler.position, feelerRadius, pheromoneLayer);
         Collider2D[] rightCollisions = Physics2D.OverlapCircleAll(rightFeeler.position, feelerRadius, pheromoneLayer);
+        SetDirectionValues(ref leftHomePheros, ref leftFoodPheros, ref centerHomePheros,
+        ref centerFoodPheros, ref rightHomePheros, ref rightFoodPheros, ref leftPlayerPheromone,
+        ref centerPlayerPheromone, ref rightPlayerPheromone, ref leftObstacle, ref rightObstacle,
+        ref centerObstacle, leftCollisions, centerCollisions, rightCollisions);
 
+        if (hasFood)
+        {
+            rightDesirability = rightHomePheros;
+            leftDesirability = leftHomePheros;
+            centerDesirability = centerHomePheros;
+            if (rightHomeDistance < leftHomeDistance)
+            {
+                rightDesirability += 3;
+            }
+            else
+            {
+                leftDesirability += 3;
+            }
+        }
+        else if (!foodDetected)
+        {
+            rightDesirability = rightFoodPheros;
+            leftDesirability = leftFoodPheros;
+            centerDesirability = centerFoodPheros;
+            rightDesirability += rightPlayerPheromone;
+            centerDesirability += centerPlayerPheromone;
+            leftDesirability += leftPlayerPheromone;
+        }
+        int totalDesirabilityRange = rightDesirability + centerDesirability + leftDesirability;
 
+        for (int i = 0; i < totalDesirabilityRange; i++)
+        {
+            if (i % 10 == 0)
+            {
+                currentIgnorePheroFactor++;
+            }
+        }
+        for (int i = 0; i < rightDesirability; i++)
+        {
+            desirabilitySelector.Add(0);
+        }
+        for (int i = 0; i < centerDesirability; i++)
+        {
+            desirabilitySelector.Add(1);
+        }
+        for (int i = 0; i < leftDesirability; i++)
+        {
+            desirabilitySelector.Add(2);
+        }
+        for (int i = 0; i < currentIgnorePheroFactor; i++){
+            desirabilitySelector.Add(3);
+        }
+        if (desirabilitySelector.Count > 0)
+        {
+            ChooseDirection(desirabilitySelector);
+        }
+        AvoidObstacles(leftObstacle, rightObstacle, centerObstacle);
+    }
+
+    private void ChooseDirection(List<int> desirabilitySelector)
+    {
+        int directionToChoose = desirabilitySelector[Random.Range(0, desirabilitySelector.Count)];
+
+        switch (directionToChoose)
+        {
+            case 0:
+                direction = (rightFeeler.transform.position - jaws.position).normalized;
+                break;
+            case 1:
+                direction = (centerFeeler.transform.position - jaws.position).normalized;
+                break;
+            case 2:
+                direction = (leftFeeler.transform.position - jaws.position).normalized;
+                break;
+            case 3:
+                direction = (direction + Random.insideUnitCircle * randomnessForce).normalized;
+                break;
+            default:
+                direction = (centerFeeler.transform.position - jaws.position).normalized;
+                break;
+        }
+    }
+
+    private static void SetDirectionValues(ref int leftHomePheros, ref int leftFoodPheros, ref int centerHomePheros, ref int centerFoodPheros, ref int rightHomePheros, ref int rightFoodPheros, ref int leftPlayerPheromone, ref int centerPlayerPheromone, ref int rightPlayerPheromone, ref int leftObstacle, ref int rightObstacle, ref int centerObstacle, Collider2D[] leftCollisions, Collider2D[] centerCollisions, Collider2D[] rightCollisions)
+    {
         foreach (var pheromone in leftCollisions)
         {
             if (pheromone.name == "To Home")
@@ -172,88 +262,23 @@ public class Ant : MonoBehaviour
                 rightObstacle++;
             }
         }
-        if (!hasFood)
+    }
+
+    void AttackPlayer()
+    {
+        Vector2 PlayerDirection = (player.position - jaws.position).normalized;
+        float distance = Vector2.Distance(player.position, jaws.position);
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, PlayerDirection, distance);
+        if (hit != false && hit.collider.gameObject.tag == "Player" && playerLoseDistance > distance)
         {
-            if (!player)
-            {
-                rightDesirability = rightFoodPheros;
-                leftDesirability = leftFoodPheros;
-                centerDesirability = centerFoodPheros;
-            }
-            else
-            {
-                rightDesirability = rightPlayerPheromone;
-                centerDesirability = centerPlayerPheromone;
-                leftDesirability = leftPlayerPheromone;
-            }
+            direction = (player.position - jaws.position).normalized;
         }
         else
         {
-
-            rightDesirability = rightHomePheros;
-            leftDesirability = leftHomePheros;
-            centerDesirability = centerHomePheros;
-            if (rightHomeDistance < leftHomeDistance)
-            {
-                rightDesirability += 2;
-            }
-            else
-            {
-                leftDesirability += 2;
-            }
+            player = null;
+            foodDetected = false;
+            targetFood = null;
         }
-        for (int i = 0; i < rightDesirability; i++)
-        {
-            desirabilitySelector.Add(0);
-        }
-        for (int i = 0; i < centerDesirability; i++)
-        {
-            desirabilitySelector.Add(1);
-        }
-        for (int i = 0; i < leftDesirability; i++)
-        {
-            desirabilitySelector.Add(2);
-        }
-        if (desirabilitySelector.Count > 0)
-        {
-            int directionToChoose = desirabilitySelector[Random.Range(0, desirabilitySelector.Count - 1)];
-
-            switch (directionToChoose)
-            {
-                case 0:
-                    direction = (rightFeeler.transform.position - jaws.position).normalized;
-                    break;
-                case 1:
-                    direction = (centerFeeler.transform.position - jaws.position).normalized;
-                    break;
-                case 2:
-                    direction = (leftFeeler.transform.position - jaws.position).normalized;
-                    break;
-                default:
-                    direction = (centerFeeler.transform.position - jaws.position).normalized;
-                    break;
-            }
-        }
-
-        AvoidObstacles(leftObstacle, rightObstacle, centerObstacle);
-
-    }
-    void AttackPlayer()
-    {
-        if (player != null)
-        {
-
-            Vector2 foodDirection = (player.position - jaws.position).normalized;
-
-            if (Vector2.Angle(transform.right, foodDirection) < fieldOfVision / 2)
-            {
-
-                targetFood = player;
-                foodDetected = true;
-            }
-
-        }
-
     }
 
     private void AvoidObstacles(int leftObstacle, int rightObstacle, int centerObstacle)
@@ -283,7 +308,7 @@ public class Ant : MonoBehaviour
         }
     }
 
-    void FindFood()
+    void FindTarget()
     {
         if (targetFood == null)
         {
@@ -297,10 +322,11 @@ public class Ant : MonoBehaviour
                 {
                     if (detectedFood[i].gameObject.tag == "Player")
                     {
-                        Debug.Log("PlayerDetected");
                         player = detectedFood[i].transform;
                         ConvertPheromones();
                         ClearPheromoneList();
+                        targetFood = player;
+                        break;
                     }
                     float foodIterationDistance = Vector2.Distance(detectedFood[i].transform.position, jaws.position);
                     if (bestDistance > foodIterationDistance)
@@ -311,16 +337,16 @@ public class Ant : MonoBehaviour
                 }
                 Transform closestFood = detectedFood[bestIndex].transform;
                 Vector2 foodDirection = (closestFood.position - jaws.position).normalized;
-
                 if (Vector2.Angle(transform.right, foodDirection) < fieldOfVision / 2)
                 {
 
                     targetFood = closestFood;
+                    Debug.Log(targetFood);
                     foodDetected = true;
                 }
             }
         }
-        else
+        else if (targetFood != null)
         {
             direction = (targetFood.position - jaws.position).normalized;
             if (Vector2.Distance(targetFood.position, jaws.position) < pickupDistance)
@@ -348,18 +374,21 @@ public class Ant : MonoBehaviour
             ownPheromones.Add(trail);
 
         }
-        else if (player)
-        {
-            trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.black);
-            trail.name = "To Player";
-            lastPheromone = trail.transform;
-        }
         else
         {
-            trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.blue);
-            trail.name = "To Home";
-            lastPheromone = trail.transform;
-            ownPheromones.Add(trail);
+            if (player != null)
+            {
+                trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.black);
+                trail.name = "To Player";
+                lastPheromone = trail.transform;
+            }
+            else
+            {
+                trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.blue);
+                trail.name = "To Home";
+                lastPheromone = trail.transform;
+                ownPheromones.Add(trail);
+            }
         }
 
     }
