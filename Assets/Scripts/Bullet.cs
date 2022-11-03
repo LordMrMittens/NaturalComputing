@@ -6,11 +6,10 @@ public class Bullet : MonoBehaviour
 {
     private void OnTriggerEnter2D(Collider2D other)
     {
-        Debug.Log("Collision");
         if (other.gameObject.tag == "Ant")
         {
             Destroy(other.gameObject);
-
+            Destroy(gameObject);
         }
         if (other.gameObject.tag == "Obstacle")
         {

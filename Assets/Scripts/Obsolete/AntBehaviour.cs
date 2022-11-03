@@ -257,14 +257,12 @@ public class AntBehaviour : MonoBehaviour
         GameObject trail = Instantiate(pheromone, butt.position, Quaternion.identity);
         if (hasFood)
         {
-            trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.backPhero, Color.red);
-            trail.name = "To Food";
+            trail.GetComponent<Pheromone>().SetupPheromone(Color.red, 3, "To Food");
 
         }
         else
         {
-            trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.blue);
-            trail.name = "To Home";
+            trail.GetComponent<Pheromone>().SetupPheromone(Color.red, 3, "To Home");
             lastPheromone = trail.transform;
         }
 

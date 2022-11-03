@@ -1,11 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-public enum PheromoneType{outPhero, backPhero};
 public class Pheromone : MonoBehaviour
 {
-    
-    public PheromoneType pType;
     [SerializeField] float decayRate;
     float strength = 100;
     [SerializeField] SpriteRenderer spriteRenderer;
@@ -17,14 +14,10 @@ public class Pheromone : MonoBehaviour
             Destroy(gameObject);
         }
     }
-    public void SetupPheromone(PheromoneType type, Color color){
-        pType = type;
+    public void SetupPheromone(Color color, float decay, string pheromoneName){
         spriteRenderer.color = color;
+        decayRate = decay;
+        name = pheromoneName; 
     }
-    void SetPheromoneValue(){
-
-    }
-    public float GetPheromoneValue(){
-        return trailValue;
-    }
+    
 }

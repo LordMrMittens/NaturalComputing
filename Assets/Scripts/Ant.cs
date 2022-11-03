@@ -4,11 +4,11 @@ using UnityEngine;
 
 public class Ant : MonoBehaviour
 {
-
+    public AntHill homeAnthill {get; set;}
     [SerializeField] float maxSpeed = 2;
     [SerializeField] float turningForce = 2;
     [SerializeField] float randomnessForce = 1;
-    [SerializeField] int ignorePheromoneFactor=3;
+    
     Vector2 currentPos;
     Vector2 velocity;
     Vector2 direction;
@@ -23,9 +23,13 @@ public class Ant : MonoBehaviour
     [SerializeField] float homeDistance;
     bool hasFood = false;
     bool foodDetected = false;
-    [SerializeField] Transform home;
+    Transform home;
     [SerializeField] GameObject pheromone;
     GameObject pickedFood;
+    [SerializeField] int homePheromoneAtraction;
+    [SerializeField] int foodPheromoneAtraction;
+    [SerializeField] int PlayerPheromoneAtraction;
+    [SerializeField] int ignorePheromoneFactor=3;
     [SerializeField] float pheromoneDistanceFrequency;
     [SerializeField] LayerMask pheromoneLayer;
     [SerializeField] Transform leftFeeler;
@@ -34,16 +38,19 @@ public class Ant : MonoBehaviour
     [SerializeField] float feelerRadius = .1f;
     Transform lastPheromone;
     int obstacleAvoidDirection = 0;
-    int leftDesirability;
-    int rightDesirability;
-    int centerDesirability;
+
     List<GameObject> ownPheromones = new List<GameObject>();
     Transform player;
     float pheromoneListCounter;
-    float pheromoneListClearInterval;
+    [SerializeField] float pheromoneListClearInterval;
     [SerializeField] float playerLoseDistance = 10;
+   [SerializeField] float detectPheromoneInterval = .1f;
+    float pheromoneIntervalTimer = 0;
+   [SerializeField] float detectPlayerInterval = 2f;
+    float detectPlayerTimer=0;
     void Start()
     {
+        home = homeAnthill.transform;
         LeavePheromone();
     }
     void Update()
@@ -62,7 +69,11 @@ public class Ant : MonoBehaviour
 
     private void Navigation()
     {
+        pheromoneIntervalTimer+=Time.deltaTime;
+        if(pheromoneIntervalTimer > detectPheromoneInterval){
         UseFeelers();
+        pheromoneIntervalTimer=0;
+        }
         if (!hasFood)
         {
             FindTarget();
@@ -100,6 +111,9 @@ public class Ant : MonoBehaviour
 
     void UseFeelers()
     {
+        int leftDesirability =0;
+        int rightDesirability = 0;
+        int centerDesirability=0;
         int leftHomePheros = 0;
         int leftFoodPheros = 0;
         int centerHomePheros = 0;
@@ -127,9 +141,9 @@ public class Ant : MonoBehaviour
 
         if (hasFood)
         {
-            rightDesirability = rightHomePheros;
-            leftDesirability = leftHomePheros;
-            centerDesirability = centerHomePheros;
+            rightDesirability = rightHomePheros * homePheromoneAtraction;
+            leftDesirability = leftHomePheros * homePheromoneAtraction;
+            centerDesirability = centerHomePheros * homePheromoneAtraction;
             if (rightHomeDistance < leftHomeDistance)
             {
                 rightDesirability += 3;
@@ -141,12 +155,12 @@ public class Ant : MonoBehaviour
         }
         else if (!foodDetected)
         {
-            rightDesirability = rightFoodPheros;
-            leftDesirability = leftFoodPheros;
-            centerDesirability = centerFoodPheros;
-            rightDesirability += rightPlayerPheromone;
-            centerDesirability += centerPlayerPheromone;
-            leftDesirability += leftPlayerPheromone;
+            rightDesirability = rightFoodPheros * foodPheromoneAtraction;
+            leftDesirability = leftFoodPheros * foodPheromoneAtraction;
+            centerDesirability = centerFoodPheros * foodPheromoneAtraction;
+            rightDesirability += rightPlayerPheromone * PlayerPheromoneAtraction;
+            centerDesirability += centerPlayerPheromone * PlayerPheromoneAtraction;
+            leftDesirability += leftPlayerPheromone * PlayerPheromoneAtraction;
         }
         int totalDesirabilityRange = rightDesirability + centerDesirability + leftDesirability;
 
@@ -266,18 +280,23 @@ public class Ant : MonoBehaviour
 
     void AttackPlayer()
     {
-        Vector2 PlayerDirection = (player.position - jaws.position).normalized;
-        float distance = Vector2.Distance(player.position, jaws.position);
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, PlayerDirection, distance);
-        if (hit != false && hit.collider.gameObject.tag == "Player" && playerLoseDistance > distance)
+        detectPlayerTimer += Time.deltaTime;
+        if (detectPlayerInterval < detectPlayerTimer)
         {
-            direction = (player.position - jaws.position).normalized;
-        }
-        else
-        {
-            player = null;
-            foodDetected = false;
-            targetFood = null;
+            detectPlayerTimer = 0;
+            Vector2 PlayerDirection = (player.position - jaws.position).normalized;
+            float distance = Vector2.Distance(player.position, jaws.position);
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, PlayerDirection, distance);
+            if (hit != false && hit.collider.gameObject.tag == "Player" && playerLoseDistance > distance)
+            {
+                direction = (player.position - jaws.position).normalized;
+            }
+            else
+            {
+                player = null;
+                foodDetected = false;
+                targetFood = null;
+            }
         }
     }
 
@@ -339,9 +358,7 @@ public class Ant : MonoBehaviour
                 Vector2 foodDirection = (closestFood.position - jaws.position).normalized;
                 if (Vector2.Angle(transform.right, foodDirection) < fieldOfVision / 2)
                 {
-
                     targetFood = closestFood;
-                    Debug.Log(targetFood);
                     foodDetected = true;
                 }
             }
@@ -351,15 +368,18 @@ public class Ant : MonoBehaviour
             direction = (targetFood.position - jaws.position).normalized;
             if (Vector2.Distance(targetFood.position, jaws.position) < pickupDistance)
             {
-                direction = (lastPheromone.position - jaws.position).normalized;
-                targetFood.position = jaws.position;
-                targetFood.parent = jaws;
-                targetFood.gameObject.layer = LayerMask.NameToLayer("Default");
-                pickedFood = targetFood.gameObject;
-                targetFood = null;
-                hasFood = true;
-                foodDetected = false;
-                ClearPheromoneList();
+                if (!player)
+                {
+                    direction = (lastPheromone.position - jaws.position).normalized;
+                    targetFood.position = jaws.position;
+                    targetFood.parent = jaws;
+                    targetFood.gameObject.layer = LayerMask.NameToLayer("Default");
+                    pickedFood = targetFood.gameObject;
+                    targetFood = null;
+                    hasFood = true;
+                    foodDetected = false;
+                    ClearPheromoneList();
+                }
             }
         }
     }
@@ -368,8 +388,7 @@ public class Ant : MonoBehaviour
         GameObject trail = Instantiate(pheromone, butt.position, Quaternion.identity);
         if (hasFood)
         {
-            trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.backPhero, Color.red);
-            trail.name = "To Food";
+            trail.GetComponent<Pheromone>().SetupPheromone(Color.red, 3, "To Food");
             lastPheromone = trail.transform;
             ownPheromones.Add(trail);
 
@@ -378,14 +397,12 @@ public class Ant : MonoBehaviour
         {
             if (player != null)
             {
-                trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.black);
-                trail.name = "To Player";
+                trail.GetComponent<Pheromone>().SetupPheromone(Color.magenta, 4, "To Player");
                 lastPheromone = trail.transform;
             }
             else
             {
-                trail.GetComponent<Pheromone>().SetupPheromone(PheromoneType.outPhero, Color.blue);
-                trail.name = "To Home";
+                trail.GetComponent<Pheromone>().SetupPheromone(Color.blue, 3, "To Home");
                 lastPheromone = trail.transform;
                 ownPheromones.Add(trail);
             }
@@ -396,11 +413,30 @@ public class Ant : MonoBehaviour
     {
         foreach (GameObject pheromone in ownPheromones)
         {
-            pheromone.name = "To Player";
+            pheromone.GetComponent<Pheromone>().SetupPheromone(Color.magenta, 4, "To Player");
         }
     }
     void ClearPheromoneList()
     {
         ownPheromones.Clear();
+    }
+    private void OnCollisionEnter2D(Collision2D other)
+    {
+        if (player && other.gameObject.tag == "Player")
+        {
+
+            Destroy(other.gameObject);
+            targetFood = null;
+            foodDetected = false;
+            ClearPheromoneList();
+        }
+    }
+
+    public void SetUpAnt(Vector3 position){
+        currentPos = position;
+    }
+    private void OnDestroy() {
+        GameManager.GM.UpdateAntsScore();
+        homeAnthill.antsOut--;
     }
 }
