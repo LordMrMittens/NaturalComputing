@@ -200,33 +200,39 @@ MonoBehaviour:
   maxSpeed: 1
   turningForce: 5
   randomnessForce: 0.1
-  ignorePheromoneFactor: 1
   jaws: {fileID: 6801464191991222312}
   butt: {fileID: 6801464192031097999}
-  fieldOfVision: 100
-  visionDistance: 1.5
+  fieldOfVision: 45
+  visionDistance: 3
   foodLayer:
     serializedVersion: 2
-    m_Bits: 8
+    m_Bits: 1032
   pickupDistance: 0.05
   dropDistance: 0.5
   homeDistance: 1
   pheromone: {fileID: 2719378588750297707, guid: a473682efa8903841a2d456c6e8571a5, type: 3}
   homePheromoneAtraction: 0
   foodPheromoneAtraction: 1
-  PlayerPheromoneAtraction: 4
+  PlayerPheromoneAtraction: 10
+  ignorePheromoneFactor: 1
   pheromoneDistanceFrequency: 0.5
   pheromoneLayer:
     serializedVersion: 2
     m_Bits: 320
+  playerLayer:
+    serializedVersion: 2
+    m_Bits: 1088
+  foodConfirmationLayer:
+    serializedVersion: 2
+    m_Bits: 64
   leftFeeler: {fileID: 6801464191821982278}
   centerFeeler: {fileID: 6801464192376328785}
   rightFeeler: {fileID: 6801464192406538430}
   feelerRadius: 0.2
   pheromoneListClearInterval: 4
-  playerLoseDistance: 5
+  playerLoseDistance: 10
   detectPheromoneInterval: 0.1
-  detectPlayerInterval: 2
+  detectPlayerInterval: 0.1
 --- !u!70 &6801464192247033431
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -22,6 +23,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] GameObject GameOverScreen;
     [SerializeField] GameObject winScreen;
     [SerializeField] GameObject PauseScreen;
+    public bool displayPheromones;
     bool isPaused = false;
     // Start is called before the first frame update
 
@@ -93,7 +95,7 @@ public class GameManager : MonoBehaviour
         SpawnPlayer();
     }
 
-    void Pause(){
+    public void Pause(){
         if(isPaused){
             Time.timeScale = 1;
             PauseScreen.SetActive(false);
@@ -109,5 +111,26 @@ public class GameManager : MonoBehaviour
         foodTotalText.text = $"Total Food: {foodCollected}";
         antsTotalText.text = $"Total Ants: {antsEliminated}";
         winScreen.SetActive(true);
+    }
+
+    public void ReloadScene(){
+        Scene scene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(scene.name);
+    }
+    public void QuitGame(){
+        Application.Quit();
+    }
+    public void TogglePheromoneRendering()
+    {
+
+        if (displayPheromones)
+        {
+            displayPheromones = false;
+        }
+        else
+        {
+            displayPheromones = true;
+        }
+
     }
 }

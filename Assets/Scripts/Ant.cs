@@ -23,6 +23,7 @@ public class Ant : MonoBehaviour
     [SerializeField] float homeDistance;
     bool hasFood = false;
     bool foodDetected = false;
+    bool obstacleDetected = false;
     Transform home;
     [SerializeField] GameObject pheromone;
     GameObject pickedFood;
@@ -32,6 +33,8 @@ public class Ant : MonoBehaviour
     [SerializeField] int ignorePheromoneFactor=3;
     [SerializeField] float pheromoneDistanceFrequency;
     [SerializeField] LayerMask pheromoneLayer;
+    [SerializeField] LayerMask playerLayer;
+    [SerializeField] LayerMask foodConfirmationLayer;
     [SerializeField] Transform leftFeeler;
     [SerializeField] Transform centerFeeler;
     [SerializeField] Transform rightFeeler;
@@ -286,10 +289,11 @@ public class Ant : MonoBehaviour
             detectPlayerTimer = 0;
             Vector2 PlayerDirection = (player.position - jaws.position).normalized;
             float distance = Vector2.Distance(player.position, jaws.position);
-            RaycastHit2D hit = Physics2D.Raycast(transform.position, PlayerDirection, distance);
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, PlayerDirection, distance,playerLayer);
             if (hit != false && hit.collider.gameObject.tag == "Player" && playerLoseDistance > distance)
             {
                 direction = (player.position - jaws.position).normalized;
+                
             }
             else
             {
@@ -302,6 +306,12 @@ public class Ant : MonoBehaviour
 
     private void AvoidObstacles(int leftObstacle, int rightObstacle, int centerObstacle)
     {
+        int allObstacles = leftObstacle + rightObstacle + centerObstacle;
+        if (allObstacles >0){
+            obstacleDetected = true;
+        } else{
+            obstacleDetected = false;
+        }
         if (leftObstacle > 0)
         {
             direction = (rightFeeler.transform.position - jaws.position).normalized;
@@ -329,7 +339,7 @@ public class Ant : MonoBehaviour
 
     void FindTarget()
     {
-        if (targetFood == null)
+        if (targetFood == null&& player==null)
         {
             Collider2D[] detectedFood = Physics2D.OverlapCircleAll(currentPos, visionDistance, foodLayer);
             if (detectedFood.Length > 0)
@@ -344,7 +354,6 @@ public class Ant : MonoBehaviour
                         player = detectedFood[i].transform;
                         ConvertPheromones();
                         ClearPheromoneList();
-                        targetFood = player;
                         break;
                     }
                     float foodIterationDistance = Vector2.Distance(detectedFood[i].transform.position, jaws.position);
@@ -358,12 +367,16 @@ public class Ant : MonoBehaviour
                 Vector2 foodDirection = (closestFood.position - jaws.position).normalized;
                 if (Vector2.Angle(transform.right, foodDirection) < fieldOfVision / 2)
                 {
-                    targetFood = closestFood;
-                    foodDetected = true;
+                    RaycastHit2D hit = Physics2D.Raycast(transform.position, foodDirection, bestDistance, foodConfirmationLayer);
+                    if (!hit)
+                    {
+                        targetFood = closestFood;
+                        foodDetected = true;
+                    }
                 }
             }
         }
-        else if (targetFood != null)
+        else if (targetFood != null&&!obstacleDetected)
         {
             direction = (targetFood.position - jaws.position).normalized;
             if (Vector2.Distance(targetFood.position, jaws.position) < pickupDistance)

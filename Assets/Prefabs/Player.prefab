@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 884208989116364144}
   - component: {fileID: 884208989116364145}
   - component: {fileID: 884208989116364146}
-  m_Layer: 3
+  m_Layer: 10
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -116,14 +116,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   movementSpeed: 5
-  minMoventSpeed: 1
+  minMoventSpeed: 1.5
   rotationSpeed: 5
   pheromone: {fileID: 2719378588750297707, guid: a473682efa8903841a2d456c6e8571a5, type: 3}
   pheromoneDistanceInterval: 0.3
   lastPheromonePosition: {x: 0, y: 0, z: 0}
   bulletPrefab: {fileID: 7167954698483330387, guid: 0a0f0a0ea169feb4391bd1828451f4c8, type: 3}
   bulletForce: 10
-  timeBetweenShots: 1
+  timeBetweenShots: 0.3
 --- !u!50 &884208989116364146
 Rigidbody2D:
   serializedVersion: 4

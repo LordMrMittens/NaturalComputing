@@ -33,7 +33,7 @@ public class PlayerController : MonoBehaviour
         vertMovement = Input.GetAxisRaw("Vertical");
         if (foodHeld > 1)
         {
-            currentspeed = movementSpeed / ((float)foodHeld / 5);
+            currentspeed = movementSpeed - ((float)foodHeld / 40);
             
         }
         if (currentspeed < minMoventSpeed)
